@@ -1,7 +1,4 @@
 ## 1. Общий обзор системы (System Overview)
-
-Платформа представляет собой гибридную **RAG-систему (Retrieval-Augmented Generation)** и **Агентной системы**, которая обеспечивает персонализацию образовательного опыта.
-
 ### Основные роли AI:
 1.  **AI-Методист (Offline/Async):** Автоматический разбор материалов, построение графа знаний, генерация диагностик и структуры курса.
 2.  **AI-Тьютор (Real-time):** Персонализированная подача контента (адаптация текста, генерация примеров) и ответы на вопросы по контексту (Lecture-Free).
@@ -123,3 +120,85 @@
   "bloom_level": "Analysis",
   "diagnostics": ["test_id_1", "case_id_1"]
 }
+```
+---
+
+## 7. Визуализация архитектуры
+
+```mermaid
+graph TD
+    %% Стили узлов
+    classDef actor fill:#f9f,stroke:#333,stroke-width:2px,color:black;
+    classDef process fill:#fff,stroke:#333,stroke-width:2px,color:black;
+    classDef ai fill:#d4edda,stroke:#28a745,stroke-width:2px,color:black;
+    classDef storage fill:#fff3cd,stroke:#ffc107,stroke-width:2px,color:black;
+
+    %% Акторы
+    Author((Автор)):::actor
+    Student((Студент)):::actor
+
+    %% Группа: Обработка данных (Offline)
+    subgraph Ingestion_Pipeline [1. Data Ingestion & Generation (Offline)]
+        direction TB
+        Files[Файлы / РПД / Видео]
+        Parser[Парсинг + Whisper ASR]:::process
+        Chunker[Семантическая нарезка]:::process
+        Embedder[Embedding Model]:::ai
+        GraphAgent[AI: Graph Extractor]:::ai
+        QuizGen[AI: Test Generator]:::ai
+    end
+
+    %% Группа: Хранение данных
+    subgraph Data_Layer [Data Layer]
+        VDB[(Vector DB\nQdrant)]:::storage
+        SQL[(PostgreSQL\nGraph, Users, Logs)]:::storage
+    end
+
+    %% Группа: Движок взаимодействия (Online)
+    subgraph Interaction_Engine [2. Interaction & Inference (Real-time)]
+        Profiler[Student Profiler\n(Колб, Интересы, История)]:::process
+        
+        subgraph Mode_Lecture [Lecture-Free / AI-Assistant]
+            Retriever[RAG Retriever]:::process
+            Adapter[AI: Content Adaptor]:::ai
+            TTS[Audio Lector]:::ai
+        end
+        
+        subgraph Mode_Case [Case-Trainer Loop]
+            SimAgent[AI: Simulation Agent]:::ai
+            Judge[AI: Evaluator / Judge]:::ai
+            Tracker[Competency Tracker]:::process
+        end
+    end
+
+    %% Связи: Загрузка данных
+    Author --> Files
+    Files --> Parser
+    Parser --> Chunker & GraphAgent & QuizGen
+    Chunker --> Embedder
+    Embedder -- Векторы --> VDB
+    GraphAgent -- Структура графа --> SQL
+    QuizGen -- Тесты/Квизы --> SQL
+
+    %% Связи: Студент и Профиль
+    Student --> Profiler
+    Profiler -- Контекст персонализации --> Adapter
+    Profiler -- Контекст персонализации --> SimAgent
+
+    %% Связи: Lecture-Free (RAG)
+    Adapter -- 1. Запрос контекста --> Retriever
+    Retriever -- 2. Поиск чанков --> VDB
+    VDB -.-> Retriever
+    Retriever -- 3. Контекст --> Adapter
+    Adapter -- 4. Персонализированный текст --> Student
+    Adapter --> TTS
+    TTS -- Аудио --> Student
+
+    %% Связи: Case-Trainer (Loop)
+    Student -- 1. Ответ --> SimAgent
+    SimAgent -- 2. Анализ ответа --> Judge
+    Judge -- 3. Оценка и фидбек --> SimAgent
+    Judge -- 4. Метрики --> Tracker
+    Tracker -- Обновление профиля --> SQL
+    SimAgent -- 5. Реакция персонажа --> Student
+```
