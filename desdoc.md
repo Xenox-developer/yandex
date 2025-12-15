@@ -13,48 +13,94 @@ Cистема поддерживает три режима:
 
 ### 2.1 C4 Container Diagram
 
-```mermaid
 graph TD
-    User[Студент / Автор] --> ClientWeb[SPA: React + TS]
-    User --> ClientMob[Mobile PWA]
-    
-    ClientWeb --> Gateway[API Gateway / Nginx]
-    
-    subgraph "Backend Cluster (K8s)"
-        Gateway --> AuthSvc[Auth Service]
-        Gateway --> CourseSvc[Course Core Service]
-        Gateway --> GraphSvc[Knowledge Graph Service]
-        Gateway --> CompanionSvc[AI Companion Service]
-        Gateway --> AssessSvc[Assessment Service]
+    %% Стилизация узлов для красоты
+    classDef person fill:#08427b,stroke:#052e56,color:#fff
+    classDef container fill:#1168bd,stroke:#0b4884,color:#fff
+    classDef component fill:#85bbf0,stroke:#5d82a8,color:#000
+    classDef db fill:#2f95d6,stroke:#206895,color:#fff
+    classDef ext fill:#999999,stroke:#666666,color:#fff
+
+    %% 1. Пользователи
+    User(("Студент / Автор")):::person
+
+    %% 2. Клиентские приложения
+    subgraph Clients ["Clients"]
+        direction TB
+        ClientWeb["Web App (React)"]:::container
+        ClientMob["Mobile App (PWA)"]:::container
+    end
+
+    %% 3. API Gateway
+    Gateway["API Gateway / Nginx"]:::container
+
+    %% 4. Бэкенд Сервисы
+    subgraph Backend ["Backend Cluster (K8s)"]
+        direction TB
+        AuthSvc["Auth Service"]:::component
+        CourseSvc["Course Core Service"]:::component
+        GraphSvc["Knowledge Graph Service"]:::component
+        CompanionSvc["AI Companion Service"]:::component
+        AssessSvc["Assessment Service"]:::component
         
-        CourseSvc --> Bus[Event Bus: Kafka/RabbitMQ]
-        GraphSvc --> Bus
-        CompanionSvc --> Bus
-        AssessSvc --> Bus
+        %% Шина событий внутри кластера
+        Bus{{"Event Bus (Kafka)"}}:::component
+    end
+
+    %% 5. Слой данных и Внешние API (Группируем вместе внизу)
+    subgraph BottomLayer ["Infrastructure & External"]
+        direction LR
         
-        Worker[Celery Workers] -.-> Bus
+        subgraph Persistence ["Persistence Layer"]
+            direction TB
+            Postgres[("PostgreSQL")]:::db
+            VectorDB[("Qdrant (Vectors)")]:::db
+            Redis[("Redis (Cache)")]:::db
+            S3[("Object Storage")]:::db
+        end
+
+        subgraph External ["External Providers"]
+            direction TB
+            OpenAI["LLM Provider API"]:::ext
+            TTS["Text-to-Speech API"]:::ext
+        end
     end
 
-    subgraph "Persistence Layer"
-        Postgres[(PostgreSQL: Main DB)]
-        VectorDB[(Qdrant: Vectors)]
-        Redis[(Redis: Cache/Sessions)]
-        S3[(Object Storage: Files)]
-    end
+    %% --- СВЯЗИ (Порядок важен для layout) ---
 
-    subgraph "External Providers"
-        OpenAI[LLM Provider API]
-        TTS[Text-to-Speech API]
-    end
+    %% User -> Clients
+    User --> ClientWeb
+    User --> ClientMob
 
+    %% Clients -> Gateway
+    ClientWeb --> Gateway
+    ClientMob --> Gateway
+
+    %% Gateway -> Services
+    Gateway --> AuthSvc
+    Gateway --> CourseSvc
+    Gateway --> GraphSvc
+    Gateway --> CompanionSvc
+    Gateway --> AssessSvc
+
+    %% Services -> Bus
+    CourseSvc <--> Bus
+    GraphSvc <--> Bus
+    CompanionSvc <--> Bus
+    AssessSvc <--> Bus
+
+    %% Services -> Data
     AuthSvc --> Postgres
     CourseSvc --> Postgres
     GraphSvc --> Postgres
     CompanionSvc --> VectorDB
+    CompanionSvc --> Redis
+    GraphSvc --> S3
+
+    %% Services -> External
     CompanionSvc --> OpenAI
-    Worker --> S3
-    Worker --> OpenAI
-```
+    CompanionSvc --> TTS
+    GraphSvc --> OpenAI
 
 ---
 
