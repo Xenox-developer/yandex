@@ -13,6 +13,7 @@ Cистема поддерживает три режима:
 
 ### 2.1 C4 Container Diagram
 
+```mermaid
 graph TD
     %% Стилизация узлов для красоты
     classDef person fill:#08427b,stroke:#052e56,color:#fff
@@ -101,6 +102,7 @@ graph TD
     CompanionSvc --> OpenAI
     CompanionSvc --> TTS
     GraphSvc --> OpenAI
+```
 
 ---
 
