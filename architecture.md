@@ -15,93 +15,51 @@ Cистема поддерживает три режима:
 
 ```mermaid
 graph TD
-    %% Стилизация узлов для красоты
-    classDef person fill:#08427b,stroke:#052e56,color:#fff
-    classDef container fill:#1168bd,stroke:#0b4884,color:#fff
-    classDef component fill:#85bbf0,stroke:#5d82a8,color:#000
-    classDef db fill:#2f95d6,stroke:#206895,color:#fff
-    classDef ext fill:#999999,stroke:#666666,color:#fff
+    %% Стили для имитации "технического" вида (белый фон, черная обводка)
+    classDef box fill:#fff,stroke:#000,stroke-width:1px,color:#000,align:left;
+    classDef container fill:#f5f5f5,stroke:#333,stroke-width:1px,stroke-dasharray: 5 5,color:#000;
 
-    %% 1. Пользователи
-    User(("Студент / Автор")):::person
+    %% --- ВЕРХНИЙ УРОВЕНЬ ---
+    Clients["<b>CLIENTS</b><br/>Web App (React) &nbsp;&nbsp;|&nbsp;&nbsp; Mobile (PWA) &nbsp;&nbsp;|&nbsp;&nbsp; Author Tool"]:::container
+    
+    Gateway["<b>YANDEX API GATEWAY</b><br/>(Routing, Rate Limiting, JWT Auth)"]:::box
 
-    %% 2. Клиентские приложения
-    subgraph Clients ["Clients"]
-        direction TB
-        ClientWeb["Web App (React)"]:::container
-        ClientMob["Mobile App (PWA)"]:::container
-    end
+    %% --- СЕРВИСЫ 1 УРОВНЯ ---
+    Auth["<b>AUTH SERVICE</b><br/>• Регистрация<br/>• JWT tokens<br/>• Роли (RBAC)<br/>• Профили"]:::box
+    
+    Core["<b>CORE SERVICE</b><br/>• Курсы<br/>• Материалы<br/>• Группы<br/>• Доступ"]:::box
+    
+    AIGateway["<b>AI GATEWAY</b><br/>• LLM Routing<br/>• Rate Limiting<br/>• Response Cache<br/>• Streaming (SSE)"]:::box
 
-    %% 3. API Gateway
-    Gateway["API Gateway / Nginx"]:::container
+    %% --- AI СЕРВИСЫ (ПОД AI GATEWAY) ---
+    Companion["<b>AI COMPANION<br/>SERVICE</b><br/>• RAG<br/>• Диалог<br/>• Контекст"]:::box
+    
+    Graph["<b>KNOWLEDGE GRAPH<br/>SERVICE</b><br/>• Генерация<br/>• Редактирование<br/>• Маршрут"]:::box
+    
+    Personal["<b>PERSONALIZATION<br/>SERVICE</b><br/>• Колб-тест<br/>• Интересы<br/>• Адаптация"]:::box
 
-    %% 4. Бэкенд Сервисы
-    subgraph Backend ["Backend Cluster (K8s)"]
-        direction TB
-        AuthSvc["Auth Service"]:::component
-        CourseSvc["Course Core Service"]:::component
-        GraphSvc["Knowledge Graph Service"]:::component
-        CompanionSvc["AI Companion Service"]:::component
-        AssessSvc["Assessment Service"]:::component
-        
-        %% Шина событий внутри кластера
-        Bus{{"Event Bus (Kafka)"}}:::component
-    end
+    %% --- ВСПОМОГАТЕЛЬНЫЕ СЕРВИСЫ (ПОД CORE) ---
+    Assess["<b>ASSESSMENT<br/>SERVICE</b><br/>• Диагностики<br/>• Кейсы"]:::box
+    
+    Content["<b>CONTENT<br/>SERVICE</b><br/>• Загрузка<br/>• Парсинг"]:::box
+    
+    Analytics["<b>ANALYTICS<br/>SERVICE</b><br/>• Статус-матрица<br/>• Прогресс"]:::box
 
-    %% 5. Слой данных и Внешние API (Группируем вместе внизу)
-    subgraph BottomLayer ["Infrastructure & External"]
-        direction LR
-        
-        subgraph Persistence ["Persistence Layer"]
-            direction TB
-            Postgres[("PostgreSQL")]:::db
-            VectorDB[("Qdrant (Vectors)")]:::db
-            Redis[("Redis (Cache)")]:::db
-            S3[("Object Storage")]:::db
-        end
+    %% --- СВЯЗИ ---
+    Clients --> Gateway
+    Gateway --> Auth
+    Gateway --> Core
+    Gateway --> AIGateway
 
-        subgraph External ["External Providers"]
-            direction TB
-            OpenAI["LLM Provider API"]:::ext
-            TTS["Text-to-Speech API"]:::ext
-        end
-    end
+    %% Ветка AI
+    AIGateway --> Companion
+    AIGateway --> Graph
+    AIGateway --> Personal
 
-    %% --- СВЯЗИ (Порядок важен для layout) ---
-
-    %% User -> Clients
-    User --> ClientWeb
-    User --> ClientMob
-
-    %% Clients -> Gateway
-    ClientWeb --> Gateway
-    ClientMob --> Gateway
-
-    %% Gateway -> Services
-    Gateway --> AuthSvc
-    Gateway --> CourseSvc
-    Gateway --> GraphSvc
-    Gateway --> CompanionSvc
-    Gateway --> AssessSvc
-
-    %% Services -> Bus
-    CourseSvc <--> Bus
-    GraphSvc <--> Bus
-    CompanionSvc <--> Bus
-    AssessSvc <--> Bus
-
-    %% Services -> Data
-    AuthSvc --> Postgres
-    CourseSvc --> Postgres
-    GraphSvc --> Postgres
-    CompanionSvc --> VectorDB
-    CompanionSvc --> Redis
-    GraphSvc --> S3
-
-    %% Services -> External
-    CompanionSvc --> OpenAI
-    CompanionSvc --> TTS
-    GraphSvc --> OpenAI
+    %% Ветка Core (Логическая группировка)
+    Core --> Assess
+    Core --> Content
+    Core --> Analytics
 ```
 
 ---
